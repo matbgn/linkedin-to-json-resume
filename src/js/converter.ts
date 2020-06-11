@@ -3,7 +3,8 @@ import CountryCodes from './country-codes';
 
 interface Output {
   basics?: object;
-  education?: object;
+  education?: object[];
+  certification?: object[];
   languages?: object;
   interests?: object;
   projects?: object;
@@ -33,6 +34,16 @@ interface Education {
   endDate?: string
 }
 
+interface Certification {
+  institution: string,
+  area: string,
+  studyType: string,
+  startDate: string,
+  gpa: string,
+  courses: Array<string>,
+  endDate?: string
+}
+
 class LinkedInToJsonResume {
   target: Output;
   constructor() {
@@ -46,6 +57,7 @@ class LinkedInToJsonResume {
       'work',
       'volunteer',
       'education',
+      'certification',
       'awards',
       'publications',
       'skills',
@@ -58,7 +70,13 @@ class LinkedInToJsonResume {
     const sortedTarget = {};
     for (const p of propertyOrder) {
       if (p in this.target) {
-        sortedTarget[p] = this.target[p];
+        if (p === 'certification') {
+          sortedTarget['education'] = this.target.education.concat(this.target.certification).sort(
+            (e1: any, e2: any) => -e1.startDate.localeCompare(e2.startDate)
+          )
+        } else {
+          sortedTarget[p] = this.target[p];
+        }
       }
     }
     return sortedTarget;
@@ -82,14 +100,13 @@ class LinkedInToJsonResume {
       name: `${source.firstName} ${source.lastName}`,
       label: source.headline,
       picture: '',
-      email: '',
       phone: '',
       website: source.websites
         ? source.websites
             .split(',')[0]
             .split(':')
             .slice(1)
-            .join(':')
+            .join(':').match(/[^\W].*[^\W]/)[0]
         : '',
       summary: source.summary,
       location: {
@@ -103,8 +120,8 @@ class LinkedInToJsonResume {
         ? [
             {
               network: 'Twitter',
-              username: source.twitterHandles,
-              url: `https://twitter.com/${source.twitterHandles}`
+              username: source.twitterHandles.match(/[^\W].*[^\W]/)[0],
+              url: `https://twitter.com/${source.twitterHandles.match(/[^\W].*[^\W]/)[0]}`
             }
           ]
         : []
@@ -113,7 +130,7 @@ class LinkedInToJsonResume {
 
   processEmail(source) {
     this.target.basics = this.target.basics || {};
-    this._extend(this.target.basics, { email: source.address });
+    this._extend(this.target.basics, { email: source });
   }
 
   processPosition(source) {
@@ -145,10 +162,12 @@ class LinkedInToJsonResume {
         studyType: education.degree,
         startDate: `${education.startDate}`,
         gpa: '',
-        courses: []
+        courses: [
+          education.notes
+        ]
       };
 
-      if (education.endDate) {
+      if (education.endDate && !"Invalid date") {
         object.endDate = `${education.endDate}`;
       }
 
@@ -156,6 +175,27 @@ class LinkedInToJsonResume {
     }
 
     this.target.education = source.map(processEducation);
+  }
+
+  processCertification(source) {
+    function processCertification(certification) {
+      let object = <Certification>{
+        institution: certification.schoolName,
+        area: certification.area,
+        studyType: certification.degree,
+        startDate: `${certification.startDate}`,
+        gpa: '',
+        courses: []
+      };
+
+      if (certification.endDate && !"Invalid date") {
+        object.endDate = `${certification.endDate}`;
+      }
+
+      return object;
+    }
+
+    this.target.certification = source.map(processCertification);
   }
 
   processSkills(skills) {

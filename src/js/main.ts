@@ -122,6 +122,27 @@ function fileSelectHandler(e) {
               return;
             });
 
+            case entry.filename.indexOf('Certifications.csv') !== -1:
+            return readEntryContents(entry).then(contents => {
+              const elements = csvToArray(contents);
+              const certification = elements
+                .slice(1, elements.length - 1)
+                .map(elem => ({
+                  area: elem[0],
+                  schoolName: elem[2],
+                  startDate: moment(elem[3]).format('YYYY-MM-DD'),
+                  endDate: moment(elem[4]).format('YYYY-MM-DD'),
+                  notes: elem[1],
+                  degree: `Certification ${elem[5]}`
+                }));
+              linkedinToJsonResume.processCertification(
+                certification.sort(
+                  (e1, e2) => -e1.startDate.localeCompare(e2.startDate)
+                )
+              );
+              return;
+            });
+
           case entry.filename.indexOf('Positions.csv') !== -1:
             return readEntryContents(entry).then(contents => {
               const elements = csvToArray(contents);
@@ -190,16 +211,16 @@ function fileSelectHandler(e) {
                 maidenName: elements[1][2],
                 address: elements[1][3],
                 birthDate: elements[1][4],
-                contactInstructions: elements[1][5],
-                headline: elements[1][6],
-                summary: elements[1][7],
-                industry: elements[1][8],
-                country: elements[1][9],
-                zipCode: elements[1][10],
-                geoLocation: elements[1][11],
-                twitterHandles: elements[1][12],
-                websites: elements[1][13],
-                instantMessengers: elements[1][14]
+                // contactInstructions: elements[1][5],
+                headline: elements[1][5],
+                summary: elements[1][6],
+                industry: elements[1][7],
+                country: elements[1][9].split(',')[2].match(/[^\W].*[^\W]/)[0],
+                zipCode: elements[1][8],
+                geoLocation: elements[1][9],
+                twitterHandles: elements[1][10],
+                websites: elements[1][11],
+                instantMessengers: elements[1][12]
               };
               linkedinToJsonResume.processProfile(profile);
               return;
@@ -210,15 +231,8 @@ function fileSelectHandler(e) {
               const elements = csvToArray(contents, '\t'); // yes, recommendations use tab-delimiter
               const email = elements
                 .slice(1, elements.length - 1)
-                .map(elem => ({
-                  address: elem[0],
-                  status: elem[1],
-                  isPrimary: elem[2] === 'Yes',
-                  dateAdded: elem[3],
-                  dateRemoved: elem[4]
-                }))
-                .filter(email => email.isPrimary);
-              if (email.length) {
+                .join().split(',');
+              if (email[2] === 'Yes') {
                 linkedinToJsonResume.processEmail(email[0]);
               }
               return;
